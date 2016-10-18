@@ -2,10 +2,20 @@
 
 include_once('/home/veliko/Zoya/shumoapp/dos_evasive/dos_evasive.php');
 
+/**
+ * Class MemcachedStoreTest
+ */
 class MemcachedStoreTest extends \PHPUnit_Framework_TestCase
 {
+	/**
+	 * Cache key prefix
+	 * @var string
+	 */
 	private $mKey = 'dos_evasive_tests';
 
+	/**
+	 *	Test Memcached storage and retrieval. Must have Memcached up and running.
+	 */
 	public function testMemcachedStore()
 	{
 		$mConnection = new MemcachedStore(array('mHost'=>'localhost'));

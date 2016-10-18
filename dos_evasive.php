@@ -13,22 +13,22 @@ $parameters = array(
 	'mTimeout' => 1,
 	'mBlockingTime' => 600,
 	'mPageHits' => 100,
-	'mUriExclusion' => '^\/smtp2GoBounces\/'
+	'mUriExclusion' => '^(\/someApi\/)|(\/someOtherApi)'
 );
 $monitor = new DosEvasiveMonitor($mConnection, $parameters);
 if ($monitor->shouldBlock()) $monitor->blockRequest($parameters);
-if ($monitor->shouldBlock()) $monitor->sendEmail(array('myemail@gmail.com', 'techemail@yahoo.com'),$parameters);
+if ($monitor->shouldNotify()) $monitor->sendEmail(array('myemail@gmail.com', 'techemail@yahoo.com'),$parameters);
 
 $parameters = array(
 	//in seconds
 	'mTimeout' => 5,
 	'mBlockingTime' => 600,
 	'mPageHits' => 100,
-	'mUriExclusion' => '^\/smtp2GoBounces\/'
+	'mUriExclusion' => '^(\/someApi\/)|(\/someOtherApi)'
 );
 $monitor = new DosEvasiveMonitor($mConnection, $parameters);
 if ($monitor->shouldBlock()) $monitor->blockRequest($parameters);
-if ($monitor->shouldBlock()) $monitor->sendEmail(array('myemail@gmail.com', 'techemail@yahoo.com'),$parameters);
+if ($monitor->shouldNotify()) $monitor->sendEmail(array('myemail@gmail.com', 'techemail@yahoo.com'),$parameters);
 */
 
 class DosEvasiveMonitor
@@ -41,11 +41,10 @@ class DosEvasiveMonitor
 
 	public function __construct(CacheMethod &$connection, $parameters)
 	{
-		//extract($parameters);
 		$mTimeout = $parameters['mTimeout'];
 
-		$this->mKey = 'memcached'.$mTimeout.':'.$_SERVER['REMOTE_ADDR'];
-		$this->mailKey = 'email:'.$this->mKey;
+		$this->mKey = 'dos_evasive'.$mTimeout.':'.$_SERVER['REMOTE_ADDR'];
+		$this->mailKey = 'dos_evasive_email:'.$this->mKey;
 		$this->mConnection = $connection;
 
 		$connected = $this->mConnection->isValid();
@@ -58,9 +57,9 @@ class DosEvasiveMonitor
 		$mBlockingTime = $parameters['mBlockingTime'];
 		$mPageHits = $parameters['mPageHits'];
 		$mTimeout = $parameters['mTimeout'];
-		$mUriExclusion = $parameters['mUriExclusion'];
+		$mUriExclusion = trim($parameters['mUriExclusion']);
 
-		if(preg_match('/'.$mUriExclusion.'/', $_SERVER['REQUEST_URI'])) return;
+		if(''!=$mUriExclusion && preg_match('/'.$mUriExclusion.'/', $_SERVER['REQUEST_URI'])) return;
 
 		$mHits = $this->mConnection->increment($this->mKey, 1);
 		if (!$mHits) $this->mConnection->add($this->mKey, 1, $mTimeout);
@@ -71,6 +70,7 @@ class DosEvasiveMonitor
 			$this->block = true;
 
 			$sent = $this->mConnection->get($this->mailKey);
+			$this->notify = false;
 			if (!$sent)
 			{
 				$this->mConnection->set($this->mailKey, 1, $mBlockingTime);
